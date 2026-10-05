@@ -45,6 +45,7 @@ import { BillResettlementScreen } from './components/screens/BillResettlementScr
 import { ChargesResettlementScreen } from './components/screens/ChargesResettlementScreen';
 import { ReportsScreen } from './components/screens/ReportsScreen';
 import { MastersScreen } from './components/screens/MastersScreen';
+import { DateClosureScreen } from './components/screens/DateClosureScreen';
 
 type NavScreen =
   | 'DASHBOARD'
@@ -56,6 +57,7 @@ type NavScreen =
   | 'CHARGES_POSTING'
   | 'BILL_RESETTLEMENT'
   | 'CHARGES_RESETTLEMENT'
+  | 'DATE_CLOSURE'
   | 'REPORTS'
   | 'MASTERS';
 
@@ -87,7 +89,7 @@ export default function App() {
     setIsUserDropdownOpen(false);
   };
 
-  const handleNavigateToSettlement = (billNumber: string) => {
+  const handleNavigateToSettlement = (billNumber?: string) => {
     setPreselectedBillForSettlement(billNumber);
     setActiveScreen('SETTLEMENT');
   };
@@ -109,6 +111,7 @@ export default function App() {
     { id: 'CHARGES_POSTING', label: 'Charges Posting', icon: Tag, color: 'text-rose-400' },
     { id: 'BILL_RESETTLEMENT', label: 'Bill Resettlement', badge: 'Auth', icon: RotateCcw, color: 'text-amber-400' },
     { id: 'CHARGES_RESETTLEMENT', label: 'Charges Resettlement', badge: 'Auth', icon: Repeat, color: 'text-indigo-400' },
+    { id: 'DATE_CLOSURE', label: 'Date Closure (Audit)', badge: 'EOD', icon: Calendar, color: 'text-amber-300' },
     { id: 'REPORTS', label: 'Reports Hub (7)', icon: BarChart3, color: 'text-blue-400' },
     { id: 'MASTERS', label: 'Masters & Setup', icon: Database, color: 'text-slate-400' },
   ];
@@ -290,6 +293,12 @@ export default function App() {
           {activeScreen === 'CHARGES_POSTING' && <ChargesPostingScreen />}
           {activeScreen === 'BILL_RESETTLEMENT' && <BillResettlementScreen />}
           {activeScreen === 'CHARGES_RESETTLEMENT' && <ChargesResettlementScreen />}
+          {activeScreen === 'DATE_CLOSURE' && (
+            <DateClosureScreen
+              onNavigateToSettlement={handleNavigateToSettlement}
+              onNavigateToLots={() => setActiveScreen('LOTS')}
+            />
+          )}
           {activeScreen === 'REPORTS' && <ReportsScreen />}
           {activeScreen === 'MASTERS' && <MastersScreen />}
         </main>

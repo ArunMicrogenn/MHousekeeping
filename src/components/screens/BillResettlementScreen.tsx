@@ -59,17 +59,19 @@ export const BillResettlementScreen: React.FC = () => {
     return settledBills.find(b => b.billNumber === selectedBillNumber);
   }, [settledBills, selectedBillNumber]);
 
-  // When selected bill changes, populate current settlement into form as default starting point
+  // When selected bill changes by ID, populate current settlement into form as default starting point
   React.useEffect(() => {
-    if (selectedBill) {
-      if (selectedBill.settlementModes && selectedBill.settlementModes.length > 0) {
-        setNewSplits(selectedBill.settlementModes.map(s => ({ ...s })));
+    if (!selectedBillNumber) return;
+    const targetBill = getBills().find(b => b.billNumber === selectedBillNumber);
+    if (targetBill) {
+      if (targetBill.settlementModes && targetBill.settlementModes.length > 0) {
+        setNewSplits(targetBill.settlementModes.map(s => ({ ...s })));
       } else {
-        setNewSplits([{ mode: 'CASH', amount: selectedBill.netAmount }]);
+        setNewSplits([{ mode: 'CASH', amount: targetBill.netAmount }]);
       }
       setResettleReason('');
     }
-  }, [selectedBill]);
+  }, [selectedBillNumber]);
 
   // Split management
   const handleAddSplit = () => {

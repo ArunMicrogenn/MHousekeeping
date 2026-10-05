@@ -64,15 +64,17 @@ export const ChargesResettlementScreen: React.FC = () => {
     return allPostings.find(p => p.postingNumber === selectedPostingNo);
   }, [allPostings, selectedPostingNo]);
 
-  // When posting changes, update defaults
+  // When posting changes by ID, update defaults
   React.useEffect(() => {
-    if (selectedPosting) {
-      setNewQuantity(selectedPosting.quantity);
-      setNewRate(selectedPosting.rate);
-      setNewRemarks(selectedPosting.remarks);
+    if (!selectedPostingNo) return;
+    const targetPosting = getChargePostings().find(p => p.postingNumber === selectedPostingNo);
+    if (targetPosting) {
+      setNewQuantity(targetPosting.quantity);
+      setNewRate(targetPosting.rate);
+      setNewRemarks(targetPosting.remarks || '');
       setReason('');
     }
-  }, [selectedPosting]);
+  }, [selectedPostingNo]);
 
   const handleInitiateResettlement = () => {
     if (!selectedPosting) return;

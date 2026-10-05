@@ -201,6 +201,42 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface DateClosureValidationSummary {
+  unsettledBillsCount: number;
+  unsettledBillsTotal: number;
+  openLotsCount: number;
+  warningsCount: number;
+  passed: boolean;
+  notes: string[];
+}
+
+export interface DateClosureRecord {
+  closureId: string;
+  closedDate: string;
+  nextDate: string;
+  closedAt: string;
+  closedBy: string;
+  closedRole: string;
+  totalBills: number;
+  grossAmount: number;
+  discountAmount: number;
+  taxAmount: number;
+  netRevenue: number;
+  cashCollected: number;
+  cardCollected: number;
+  upiCollected: number;
+  roomTransferTotal: number;
+  creditTotal: number;
+  extraBedRevenue: number;
+  miscChargesRevenue: number;
+  validationSummary: DateClosureValidationSummary;
+  managerRemarks: string;
+  status: 'CLOSED' | 'REOPENED';
+  reopenedAt?: string;
+  reopenedBy?: string;
+  reopenReason?: string;
+}
+
 export interface DayCloseConfig {
   isDayClosed: boolean;
   businessDate: string;

@@ -57,28 +57,30 @@ export const SettlementScreen: React.FC<{ initialBillNumber?: string }> = ({ ini
     return allBills.find(b => b.billNumber === selectedBillId);
   }, [allBills, selectedBillId]);
 
-  // When active bill changes, set default split
+  // When active bill changes by ID, set default split
   React.useEffect(() => {
-    if (activeBill) {
-      if (activeBill.customerType === 'GUEST' && activeBill.roomNumber) {
+    if (!selectedBillId) return;
+    const targetBill = getBills().find(b => b.billNumber === selectedBillId);
+    if (targetBill) {
+      if (targetBill.customerType === 'GUEST' && targetBill.roomNumber) {
         setSplits([
           {
             mode: 'ROOM_TRANSFER',
-            amount: activeBill.netAmount,
-            roomNumber: activeBill.roomNumber,
-            folioNumber: activeBill.folioNumber
+            amount: targetBill.netAmount,
+            roomNumber: targetBill.roomNumber,
+            folioNumber: targetBill.folioNumber
           }
         ]);
       } else {
         setSplits([
           {
             mode: 'CASH',
-            amount: activeBill.netAmount
+            amount: targetBill.netAmount
           }
         ]);
       }
     }
-  }, [activeBill]);
+  }, [selectedBillId]);
 
   // Split management
   const handleAddSplit = () => {

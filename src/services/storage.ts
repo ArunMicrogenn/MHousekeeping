@@ -12,7 +12,9 @@ import {
   DayCloseConfig,
   PaymentSplit,
   LotItem,
-  ResettlementLog
+  ResettlementLog,
+  DateClosureRecord,
+  DateClosureValidationSummary
 } from '../types';
 import {
   INITIAL_USERS,
@@ -24,7 +26,8 @@ import {
   INITIAL_BILLS,
   INITIAL_CHARGE_POSTINGS,
   INITIAL_AUDIT_LOGS,
-  INITIAL_DAY_CLOSE
+  INITIAL_DAY_CLOSE,
+  INITIAL_CLOSURE_HISTORY
 } from './mockData';
 
 const KEYS = {
@@ -39,6 +42,7 @@ const KEYS = {
   CHARGE_POSTINGS: 'hk_charge_postings_v1',
   AUDIT_LOGS: 'hk_audit_logs_v1',
   DAY_CLOSE: 'hk_day_close_v1',
+  CLOSURE_HISTORY: 'hk_closure_history_v1',
   BILL_SEQ: 'hk_bill_seq_v1',
   LOT_SEQ: 'hk_lot_seq_v1',
   POSTING_SEQ: 'hk_posting_seq_v1'
@@ -180,9 +184,229 @@ export function generatePostingNumber(): string {
   return `POST-2026-${String(nextSeq).padStart(4, '0')}`;
 }
 
-// Day Close
+// Day Close & Date Closure Records
 export function getDayCloseConfig(): DayCloseConfig {
   return getStored<DayCloseConfig>(KEYS.DAY_CLOSE, INITIAL_DAY_CLOSE);
+}
+
+export function getClosureHistory(): DateClosureRecord[] {
+  return getStored<DateClosureRecord[]>(KEYS.CLOSURE_HISTORY, INITIAL_CLOSURE_HISTORY);
+}
+
+export interface ClosureValidationResult {
+  unsettledBillsCount: number;
+  unsettledBillsTotal: number;
+  unsettledBills: HKBill[];
+  openLotsCount: number;
+  openLots: HKLot[];
+  warningsCount: number;
+  passed: boolean;
+  notes: string[];
+  warnings: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    severity: 'critical' | 'warning' | 'info';
+    linkScreen?: string;
+  }>;
+}
+
+export function validateDateClosure(targetDate?: string): ClosureValidationResult {
+  const currentCfg = getDayCloseConfig();
+  const dateToValidate = targetDate || currentCfg.businessDate;
+  
+  const bills = getBills();
+  const lots = getLots();
+
+  const unsettledBills = bills.filter(
+    b => b.billDate === dateToValidate && b.status === 'UNSETTLED'
+  );
+  const unsettledTotal = unsettledBills.reduce((acc, b) => acc + b.netAmount, 0);
+
+  const openLots = lots.filter(
+    l => l.lotDate === dateToValidate && l.status === 'OPEN'
+  );
+
+  const warnings: ClosureValidationResult['warnings'] = [];
+  const notes: string[] = [];
+
+  if (unsettledBills.length > 0) {
+    warnings.push({
+      id: 'UNSETTLED_BILLS',
+      title: `${unsettledBills.length} Unsettled Bill(s) Found ($${unsettledTotal.toFixed(2)})`,
+      detail: 'Housekeeping bills generated today remain unpaid/unsettled in cashier desk.',
+      severity: 'critical',
+      linkScreen: 'SETTLEMENT'
+    });
+    notes.push(`${unsettledBills.length} unsettled bill(s) totaling $${unsettledTotal.toFixed(2)}`);
+  }
+
+  if (openLots.length > 0) {
+    warnings.push({
+      id: 'OPEN_LOTS',
+      title: `${openLots.length} Open Batch Lot(s) Active`,
+      detail: 'Laundry or linen lots are open without generated invoices.',
+      severity: 'warning',
+      linkScreen: 'LOTS'
+    });
+    notes.push(`${openLots.length} open batch lot(s) pending billing`);
+  }
+
+  if (warnings.length === 0) {
+    notes.push('All bills settled and all batch lots closed.');
+    notes.push('All room folio ledger entries balanced.');
+  }
+
+  return {
+    unsettledBillsCount: unsettledBills.length,
+    unsettledBillsTotal: unsettledTotal,
+    unsettledBills,
+    openLotsCount: openLots.length,
+    openLots,
+    warningsCount: warnings.length,
+    passed: warnings.length === 0,
+    notes,
+    warnings
+  };
+}
+
+export function executeDateClosure(params: {
+  nextDate?: string;
+  managerRemarks: string;
+  authorizedBy: string;
+  authorizedRole: string;
+}): DateClosureRecord {
+  const cfg = getDayCloseConfig();
+  const currentDate = cfg.businessDate;
+  const history = getClosureHistory();
+  const bills = getBills();
+  const postings = getChargePostings();
+
+  // 1. Validation check
+  const validation = validateDateClosure(currentDate);
+
+  // 2. Compute financial metrics for closing date
+  const dateBills = bills.filter(b => b.billDate === currentDate && b.status !== 'CANCELLED');
+  const datePostings = postings.filter(p => p.postingDate === currentDate && p.status !== 'REVERSED');
+
+  const totalBills = dateBills.length;
+  const grossAmount = dateBills.reduce((s, b) => s + b.grossAmount, 0);
+  const discountAmount = dateBills.reduce((s, b) => s + b.discountAmount, 0);
+  const taxAmount = dateBills.reduce((s, b) => s + b.taxAmount, 0);
+  const netRevenue = dateBills.reduce((s, b) => s + b.netAmount, 0);
+
+  let cashCollected = 0;
+  let cardCollected = 0;
+  let upiCollected = 0;
+  let roomTransferTotal = 0;
+  let creditTotal = 0;
+
+  dateBills.forEach(b => {
+    if (b.status === 'SETTLED' && b.settlementModes) {
+      b.settlementModes.forEach(s => {
+        if (s.mode === 'CASH') cashCollected += s.amount;
+        if (s.mode === 'CARD') cardCollected += s.amount;
+        if (s.mode === 'UPI') upiCollected += s.amount;
+        if (s.mode === 'ROOM_TRANSFER') roomTransferTotal += s.amount;
+        if (s.mode === 'CREDIT') creditTotal += s.amount;
+      });
+    }
+  });
+
+  const extraBedRevenue = datePostings
+    .filter(p => p.chargeType === 'EXTRA_BED')
+    .reduce((s, p) => s + p.netAmount, 0);
+
+  const miscChargesRevenue = datePostings
+    .filter(p => p.chargeType === 'MISC_CHARGE')
+    .reduce((s, p) => s + p.netAmount, 0);
+
+  // 3. Determine next business date
+  let nextDate = params.nextDate;
+  if (!nextDate) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + 1);
+    nextDate = d.toISOString().substring(0, 10);
+  }
+
+  const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+  const closureId = `AUD-CLOSE-${currentDate.replace(/-/g, '')}-${Math.floor(Math.random() * 1000)}`;
+
+  const closureRecord: DateClosureRecord = {
+    closureId,
+    closedDate: currentDate,
+    nextDate,
+    closedAt: timestamp,
+    closedBy: params.authorizedBy,
+    closedRole: params.authorizedRole,
+    totalBills,
+    grossAmount,
+    discountAmount,
+    taxAmount,
+    netRevenue,
+    cashCollected,
+    cardCollected,
+    upiCollected,
+    roomTransferTotal,
+    creditTotal,
+    extraBedRevenue,
+    miscChargesRevenue,
+    validationSummary: {
+      unsettledBillsCount: validation.unsettledBillsCount,
+      unsettledBillsTotal: validation.unsettledBillsTotal,
+      openLotsCount: validation.openLotsCount,
+      warningsCount: validation.warningsCount,
+      passed: validation.passed,
+      notes: validation.notes
+    },
+    managerRemarks: params.managerRemarks,
+    status: 'CLOSED'
+  };
+
+  history.unshift(closureRecord);
+  setStored(KEYS.CLOSURE_HISTORY, history);
+
+  // 4. Update Business Date
+  cfg.businessDate = nextDate;
+  cfg.isDayClosed = false;
+  cfg.lastClosedAt = timestamp;
+  cfg.lastClosedBy = params.authorizedBy;
+  setStored(KEYS.DAY_CLOSE, cfg);
+
+  logAudit(
+    'DATE_CLOSURE',
+    'DAY_CLOSE',
+    closureId,
+    `Date closure executed for ${currentDate}. Advanced to ${nextDate}. Net Rev: $${netRevenue.toFixed(2)}. (Auth: ${params.authorizedBy})`
+  );
+
+  return closureRecord;
+}
+
+export function reopenDateClosure(closureId: string, reason: string, authorizedBy: string): void {
+  const history = getClosureHistory();
+  const record = history.find(h => h.closureId === closureId);
+  if (!record) throw new Error('Closure record not found');
+  if (record.status === 'REOPENED') throw new Error('Closure is already marked as reopened');
+
+  record.status = 'REOPENED';
+  record.reopenedAt = new Date().toISOString().replace('T', ' ').substring(0, 16);
+  record.reopenedBy = authorizedBy;
+  record.reopenReason = reason;
+  setStored(KEYS.CLOSURE_HISTORY, history);
+
+  // Rollback business date
+  const cfg = getDayCloseConfig();
+  cfg.businessDate = record.closedDate;
+  cfg.isDayClosed = false;
+  setStored(KEYS.DAY_CLOSE, cfg);
+
+  logAudit(
+    'REOPEN_DATE',
+    'DAY_CLOSE',
+    closureId,
+    `Reopened business date ${record.closedDate} by ${authorizedBy}. Reason: ${reason}`
+  );
 }
 
 export function toggleDayClose(closed: boolean, reason?: string): void {

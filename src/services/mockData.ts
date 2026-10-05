@@ -8,7 +8,8 @@ import {
   HKBill,
   ChargePosting,
   AuditLog,
-  DayCloseConfig
+  DayCloseConfig,
+  DateClosureRecord
 } from '../types';
 
 export const INITIAL_USERS: User[] = [
@@ -284,3 +285,36 @@ export const INITIAL_DAY_CLOSE: DayCloseConfig = {
   isDayClosed: false,
   businessDate: '2026-10-05',
 };
+
+export const INITIAL_CLOSURE_HISTORY: DateClosureRecord[] = [
+  {
+    closureId: 'AUD-CLOSE-20261004',
+    closedDate: '2026-10-04',
+    nextDate: '2026-10-05',
+    closedAt: '2026-10-04 23:55',
+    closedBy: 'Elena Vance',
+    closedRole: 'manager',
+    totalBills: 2,
+    grossAmount: 5700,
+    discountAmount: 210,
+    taxAmount: 874.8,
+    netRevenue: 6364.8,
+    cashCollected: 0,
+    cardCollected: 2116.8,
+    upiCollected: 0,
+    roomTransferTotal: 3360,
+    creditTotal: 0,
+    extraBedRevenue: 3360,
+    miscChargesRevenue: 0,
+    validationSummary: {
+      unsettledBillsCount: 0,
+      unsettledBillsTotal: 0,
+      openLotsCount: 0,
+      warningsCount: 0,
+      passed: true,
+      notes: ['All bills settled before midnight audit', 'No open lots remaining']
+    },
+    managerRemarks: 'Regular day close completed smoothly. All batch lots billed and accounts audited.',
+    status: 'CLOSED'
+  }
+];
