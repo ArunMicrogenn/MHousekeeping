@@ -1,0 +1,6 @@
+{
+  "name": "House Keeping Billing & Posting Management System",
+  "description": "Enterprise Housekeeping ERP module featuring Quick Billing, Batch Lots, Folio Posting, Split Settlements, Bill & Charges Resettlement, and 7 Real-time Reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
