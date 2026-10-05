@@ -13,7 +13,9 @@ import {
   QrCode,
   ShieldCheck,
   Clock,
-  Sparkles
+  Sparkles,
+  X,
+  ArrowLeft
 } from 'lucide-react';
 import {
   getBills,
@@ -26,7 +28,15 @@ import { HKBill, PaymentMode, PaymentSplit } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/exportUtils';
 import { InvoiceModal } from '../InvoiceModal';
 
-export const SettlementScreen: React.FC<{ initialBillNumber?: string }> = ({ initialBillNumber }) => {
+export interface SettlementScreenProps {
+  initialBillNumber?: string;
+  onClose?: () => void;
+}
+
+export const SettlementScreen: React.FC<SettlementScreenProps> = ({
+  initialBillNumber,
+  onClose
+}) => {
   const currentUser = getCurrentUser();
   const dayClose = getDayCloseConfig();
   const allBills = getBills();
@@ -172,10 +182,23 @@ export const SettlementScreen: React.FC<{ initialBillNumber?: string }> = ({ ini
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-          <Clock className="w-4 h-4 text-amber-400" />
-          <span className="text-slate-400">Unsettled Queue:</span>
-          <span className="font-bold font-mono text-amber-400">{unsettledBills.length} Bills</span>
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <Clock className="w-4 h-4 text-amber-400" />
+            <span className="text-slate-400">Unsettled Queue:</span>
+            <span className="font-bold font-mono text-amber-400">{unsettledBills.length} Bills</span>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm"
+              title="Close Settlement Screen"
+            >
+              <X className="w-4 h-4 text-slate-400" />
+              <span>Close Screen</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -280,11 +303,21 @@ export const SettlementScreen: React.FC<{ initialBillNumber?: string }> = ({ ini
                   </p>
                 </div>
 
-                <div className="text-right bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Payable Net Total</span>
-                  <p className="text-2xl font-black font-mono text-emerald-400 mt-0.5">
-                    {formatCurrency(activeBill.netAmount)}
-                  </p>
+                <div className="flex items-center gap-3 justify-between sm:justify-end">
+                  <div className="text-right bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Payable Net Total</span>
+                    <p className="text-2xl font-black font-mono text-emerald-400 mt-0.5">
+                      {formatCurrency(activeBill.netAmount)}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedBillId('')}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors border border-slate-700"
+                    title="Close / Deselect Active Bill"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
@@ -464,16 +497,30 @@ export const SettlementScreen: React.FC<{ initialBillNumber?: string }> = ({ ini
                   )}
                 </div>
 
-                {/* Confirm Settlement Button */}
-                <button
-                  type="button"
-                  disabled={!isBalanced}
-                  onClick={handleConfirmSettlement}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 text-slate-950 text-sm font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                  Confirm & Finalize Settlement (Print Invoice)
-                </button>
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onClose) onClose();
+                      else setSelectedBillId('');
+                    }}
+                    className="py-3 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all border border-slate-700 flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                    <span>Close Desk</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!isBalanced}
+                    onClick={handleConfirmSettlement}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 text-slate-950 text-sm font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    Confirm & Finalize Settlement (Print Invoice)
+                  </button>
+                </div>
 
               </div>
             </>

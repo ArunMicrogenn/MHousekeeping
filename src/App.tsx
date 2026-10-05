@@ -20,7 +20,10 @@ import {
   ChevronDown,
   Sparkles,
   Menu,
-  X
+  X,
+  Home,
+  ArrowLeft,
+  ChevronRight
 } from 'lucide-react';
 import {
   getCurrentUser,
@@ -132,28 +135,46 @@ export default function App() {
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20">
-              <Building2 className="w-5 h-5" />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white">
-                  GRAND ELYSIUM
-                </h1>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  Housekeeping Module
-                </span>
+            <div
+              onClick={() => setActiveScreen('DASHBOARD')}
+              className="flex items-center gap-3 cursor-pointer group"
+              title="Return to Home Dashboard"
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                <Building2 className="w-5 h-5" />
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
-                Billing, Folio Postings, Resettlement & Real-time Audit
-              </p>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white group-hover:text-amber-300 transition-colors">
+                    GRAND ELYSIUM
+                  </h1>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Housekeeping Module
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 hidden sm:block">
+                  Billing, Folio Postings, Resettlement & Real-time Audit
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Right Status Controls & User Role Switcher */}
           <div className="flex items-center gap-3">
             
+            {/* Direct Home / Dashboard Quick Link */}
+            {activeScreen !== 'DASHBOARD' && (
+              <button
+                onClick={() => setActiveScreen('DASHBOARD')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all shadow-sm"
+                title="Back to Home Dashboard"
+              >
+                <Home className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Home Dashboard</span>
+              </button>
+            )}
+
             {/* Business Date & Day Close Status */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               <Calendar className="w-3.5 h-3.5 text-amber-400" />
@@ -278,6 +299,33 @@ export default function App() {
 
         {/* Dynamic Screen View */}
         <main className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+          {/* Quick Breadcrumb & Back to Home bar when on any sub-screen */}
+          {activeScreen !== 'DASHBOARD' && (
+            <div className="no-print mb-5 flex items-center justify-between gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+              <button
+                onClick={() => setActiveScreen('DASHBOARD')}
+                className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-700/80 text-xs font-semibold text-slate-300 hover:text-white transition-all shadow-sm"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-400 group-hover:-translate-x-0.5 transition-transform" />
+                <span>Back to Dashboard</span>
+              </button>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 pr-2">
+                <button
+                  onClick={() => setActiveScreen('DASHBOARD')}
+                  className="flex items-center gap-1 hover:text-amber-400 transition-colors"
+                >
+                  <Home className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Home</span>
+                </button>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+                <span className="text-slate-200 font-bold">
+                  {navItems.find(i => i.id === activeScreen)?.label}
+                </span>
+              </div>
+            </div>
+          )}
+
           {activeScreen === 'DASHBOARD' && (
             <DashboardScreen onNavigate={handleDashboardNavigate} />
           )}
@@ -287,7 +335,10 @@ export default function App() {
             <BillingScreen onNavigateToSettlement={handleNavigateToSettlement} />
           )}
           {activeScreen === 'SETTLEMENT' && (
-            <SettlementScreen initialBillNumber={preselectedBillForSettlement} />
+            <SettlementScreen
+              initialBillNumber={preselectedBillForSettlement}
+              onClose={() => setActiveScreen('DASHBOARD')}
+            />
           )}
           {activeScreen === 'EXTRA_BED' && <ExtraBedPostingScreen />}
           {activeScreen === 'CHARGES_POSTING' && <ChargesPostingScreen />}
